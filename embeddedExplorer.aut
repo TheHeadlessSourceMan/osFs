@@ -1,0 +1,43 @@
+#include <GUIConstants.au3>
+
+$hGUI = GUICreate("MyExplorer", 1200, 500, -1, -1, BitOr($WS_MINIMIZEBOX, $WS_CAPTION, $WS_POPUP, $WS_SYSMENU, $WS_CLIPCHILDREN))
+$Exp1 = _RunEmbExp("explorer.exe /e,d:\index", "[CLASS:ExploreWClass]", $hGUI, 600, 0, 600, 500)
+$Exp2 = _RunEmbExp("explorer.exe /e,d:\index", "[CLASS:ExploreWClass]", $hGUI, 0, 0, 600, 500)
+GUISetState()
+
+While 1
+    $msg = GUIGetMsg()
+    If $msg = -3 Then
+        GUISetState(@SW_HIDE, $hGUI)
+        WinClose($Exp1)
+        WinClose($Exp2)
+        ExitLoop
+    EndIf
+WEnd
+
+Func _RunEmbExp($sRun, $sClass, $hGUI, $nLeftGUI, $nTopGUI, $nRightGUI, $nBottomGUI, $nStyle = -2, $nExStyle = -2)
+    Local $iPID = Run($sRun, '', @SW_HIDE)
+    WinWait($sClass)
+    Return _WinEmbedToGUI(WinGetHandle($sClass), $hGUI, $nLeftGUI, $nTopGUI, $nRightGUI, $nBottomGUI, $nStyle, $nExStyle)
+EndFunc
+
+Func _WinEmbedToGUI($hWnd, $hGUI, $nLeftGUI, $nTopGUI, $nRightGUI, $nBottomGUI, $nStyle = -2, $nExStyle = -2)
+    Local $nExStyleEx = DllCall("user32.dll", "int", "GetWindowLong", "hwnd", $hWnd, "int", -20)
+    If IsArray($nExStyleEx) = 0 Then Return SetError(1, 0, 0)
+    DllCall("user32.dll", "int", "SetWindowLong", "hwnd", $hWnd, "int", -20, "int", BitOr($nExStyleEx[0], 0x00000040));WS_EX_MDICHILD
+    DllCall("user32.dll", "int", "SetParent", "hwnd", $hWnd, "hwnd", $hGUI)
+    WinSetState($hWnd, '', @SW_SHOW)
+    WinMove($hWnd, "", $nLeftGUI, $nTopGUI, $nRightGUI, $nBottomGUI)
+    If $nStyle = -2 And $nExStyle = -2 Then Return $hWnd
+    Local $GWL_STYLE = -16, $GWL_EXSTYLE = -20
+    Local $SWP_NOMOVE = 0x2, $SWP_NOSIZE = 0x1
+    Local $SWP_SHOWWINDOW = 0x40, $SWP_NOZORDER = 0x4
+    Local $iFlags = BitOR($SWP_SHOWWINDOW, $SWP_NOSIZE, $SWP_NOMOVE, $SWP_NOZORDER)
+    If $nStyle = -2 Then $nStyle = $WS_MINIMIZEBOX + $WS_CAPTION + $WS_POPUP + $WS_SYSMENU
+    If $nExStyle = -2 Then $nExStyle = $nExStyleEx[0]
+    DllCall("User32.dll", "int", "SetWindowLong", "hwnd", $hWnd, "int", $GWL_STYLE, "int", $nStyle)
+    DllCall("User32.dll", "int", "SetWindowLong", "hwnd", $hWnd, "int", $GWL_EXSTYLE, "int", $nExStyle)
+    DllCall("User32.dll", "int", "SetWindowPos", "hwnd", $hWnd, "hwnd", 0, "int", 0, "int", 0, _
+            "int", 0, "int", 0, "int", $iFlags)
+    Return $hWnd
+EndFunc
